@@ -1,13 +1,12 @@
-cff-version: v0.5.3
+cff-version: v0.5.4
 message: "If you use this software, please cite it as below."
 title: "SAPA IoT — Smart Autonomous Power Amplifier for Industrial Audio Systems"
 
 authors:
+  - family-names: "Matos"
+    given-names: "Andre Gama"
 
-* family-names: "Matos"
-  given-names: "Andre Gama"
-
-version: "v0.5.3"
+version: "v0.5.4"
 
 date-released: "2026-05-29"
 
