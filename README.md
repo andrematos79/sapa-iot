@@ -11,9 +11,8 @@ Embedded industrial IoT platform for autonomous power management of industrial a
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Release](https://img.shields.io/badge/Release-v0.5.3%20Stable-brightgreen)
 
-**Latest version:** **SAPA IoT v0.5.3 – Branding Logo + LittleFS CSV Logging**
+**Latest version:** SAPA IoT v0.5.3 – Branding Logo + LittleFS CSV Logging  
 **Release:** 29/05/2026
-
 ---
 
 # Overview
