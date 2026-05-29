@@ -9,7 +9,7 @@ Embedded industrial IoT platform for autonomous power management of industrial a
 ![ESP32](https://img.shields.io/badge/ESP32-IoT-red)
 ![Arduino](https://img.shields.io/badge/Framework-Arduino-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Release](https://img.shields.io/badge/version-v0.5.3-stable-blue)
+![Release](https://img.shields.io/badge/Release-v0.5.3%20Stable-brightgreen)
 
 **Latest version:** **SAPA IoT v0.5.3 – Branding Logo + LittleFS CSV Logging**
 **Release:** 29/05/2026
