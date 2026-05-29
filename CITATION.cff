@@ -1,4 +1,4 @@
-cff-version: v0.5.4
+cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "SAPA IoT — Smart Autonomous Power Amplifier for Industrial Audio Systems"
 
@@ -6,26 +6,23 @@ authors:
   - family-names: "Matos"
     given-names: "Andre Gama"
 
-version: "v0.5.4"
-
+version: "v0.5.5"
 date-released: "2026-05-29"
-
 license: "MIT"
 
 abstract: >
-Embedded industrial IoT platform based on ESP32 technology for autonomous
-power management of industrial audio amplifiers using standalone Wi-Fi AP
-architecture, industrial multi-window scheduling, persistent CSV audit
-logging, and embedded web-based control.
+  Embedded industrial IoT platform based on ESP32 technology for autonomous
+  power management of industrial audio amplifiers using standalone Wi-Fi AP
+  architecture, industrial multi-window scheduling, persistent CSV audit
+  logging, and embedded web-based control.
 
 keywords:
-
-* ESP32
-* Industrial IoT
-* Embedded Systems
-* Industrial Automation
-* Smart Manufacturing
-* Embedded WebServer
-* Standalone AP
-* CSV Logging
-* Industrial Control
+  - ESP32
+  - Industrial IoT
+  - Embedded Systems
+  - Industrial Automation
+  - Smart Manufacturing
+  - Embedded WebServer
+  - Standalone AP
+  - CSV Logging
+  - Industrial Control
