@@ -1,7 +1,7 @@
 # SAPA IoT — Smart Autonomous Power Amplifier for Industrial Audio Systems
 
 <p align="center">
-  <img src="images/logo_sapa.png" width="420">
+  <img src="docs/screenshots/sapa_logo.png" width="420">
 </p>
 
 Embedded industrial IoT platform for autonomous power management of industrial audio amplifiers using ESP32 technology.
