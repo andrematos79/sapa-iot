@@ -12,10 +12,11 @@ Embedded industrial IoT platform for autonomous power management of industrial a
 ![Release](https://img.shields.io/badge/Release-v0.5.3%20Stable-brightgreen)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20447741.svg)](https://doi.org/10.5281/zenodo.20447741)
 
-**Latest version:** SAPA IoT v0.5.3 – Branding Logo + LittleFS CSV Logging  
-**Release:** 29/05/2026
+**Latest version:** SAPA IoT v0.7.0 Sensor Ready 
+**Release:** 30/05/2026
 ---
 
+# Overview
 # Overview
 
 **SAPA IoT (Smart Autonomous Power Amplifier)** is an embedded industrial automation platform developed for intelligent control and autonomous power management of industrial audio amplifiers.
@@ -40,7 +41,7 @@ Developed by André Gama de Matos
 # Main Interface
 
 <p align="center">
-  <img src="docs/screenshots/interface.GIF" width="900">
+  <img src="docs/screenshots/interface.png" width="900">
 </p>
 
 ---
@@ -178,7 +179,7 @@ The architecture improves industrial robustness and deployment simplicity.
 # Embedded Audit Logging System
 
 <p align="center">
-  <img src="docs/screenshots/download_log.GIF" width="850">
+  <img src="docs/screenshots/download_log.png" width="850">
 </p>
 
 The platform includes an embedded operational logging system.
@@ -212,7 +213,7 @@ Future versions will include:
 # About System Interface
 
 <p align="center">
-  <img src="docs/screenshots/sobre.GIF" width="700">
+  <img src="docs/screenshots/sobre.png" width="700">
 </p>
 
 The system includes a dedicated "About System" page containing:

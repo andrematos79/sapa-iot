@@ -3,11 +3,15 @@
 #include <LittleFS.h>
 #include <pgmspace.h>
 
-const char* FW_VERSION = "v0.5.3";
+const char* FW_VERSION = "v0.7.0 Sensor Ready";
 const char* RELEASE_DATE = "29/05/2026";
 
+// ========= ESTIMATIVA DE CONSUMO =========
+const float AMP_POWER_W = 500.0;
+const float BASELINE_HOURS_YEAR = 24.0 * 365.0;
+
 // ======================================================
-// SAPA IoT v0.5.3 - Branding Logo + LittleFS CSV Logging
+// SAPA IoT v0.6.0 - Dashboard Industrial
 // Base funcional preservada da v0.4.2:
 // - Pinos reais: SSR 23, Botao 22, LEDs 19/18/5
 // - ESP32 cria sua propria rede Wi-Fi: SAPA_IOT / sapa1234
@@ -160,6 +164,19 @@ void checkLogRotation();
 String eventLogs[MAX_LOGS];
 int logIndex = 0;
 int logCount = 0;
+
+// ========= ESTATISTICAS DO DASHBOARD =========
+String lastEventDashboard = "Sistema iniciado";
+String lastCommandSource = "BOOT";
+
+unsigned long totalOnEvents = 0;
+unsigned long totalOffEvents = 0;
+
+// ========= SENSOR READY (PLACEHOLDERS) =========
+// Valores reservados para futura integração de sensores reais.
+// -999.0 indica sensor ainda nao instalado.
+float tempAmbientC = -999.0;
+float tempInternalC = -999.0;
 
 String getUptimeRawForLog() {
   unsigned long seconds = millis() / 1000;
@@ -337,10 +354,60 @@ void setOutput(bool state, String source) {
   outputState = state;
   applyOutput();
 
+  lastEventDashboard = outputState ? "SSR ON" : "SSR OFF";
+  lastCommandSource = source;
+
+  if (outputState) {
+    totalOnEvents++;
+  } else {
+    totalOffEvents++;
+  }
+
   addLog("[OUTPUT] " + String(outputState ? "ON" : "OFF") + " | Fonte: " + source);
 }
 
 // ========= TEMPO =========
+
+
+// ========= CALCULO DE ECONOMIA ESTIMADA =========
+int getWindowDurationMinutesByValues(bool enabled, int onHour, int onMin, int offHour, int offMin) {
+  if (!enabled) return 0;
+  int startMin = onHour * 60 + onMin;
+  int endMin = offHour * 60 + offMin;
+  if (startMin <= endMin) return endMin - startMin;
+  return (1440 - startMin) + endMin;
+}
+
+float getScheduledOnHoursWeek() {
+  int totalMinutes = 0;
+  for (int d = 0; d < 7; d++) {
+    for (int w = 0; w < MAX_WINDOWS_PER_DAY; w++) {
+      totalMinutes += getWindowDurationMinutesByValues(scheduleTable[d][w].enabled, scheduleTable[d][w].onHour, scheduleTable[d][w].onMin, scheduleTable[d][w].offHour, scheduleTable[d][w].offMin);
+    }
+  }
+  return totalMinutes / 60.0;
+}
+
+float getScheduledOnHoursYear() { return getScheduledOnHoursWeek() * 52.1429; }
+float getBaselineKwhYear() { return (AMP_POWER_W * BASELINE_HOURS_YEAR) / 1000.0; }
+float getSapaKwhYear() { return (AMP_POWER_W * getScheduledOnHoursYear()) / 1000.0; }
+float getEstimatedSavedKwhYear() { float s=getBaselineKwhYear()-getSapaKwhYear(); return s<0?0:s; }
+float getEstimatedSavedHoursYear() { float s=BASELINE_HOURS_YEAR-getScheduledOnHoursYear(); return s<0?0:s; }
+String formatFloat1(float value){ return String(value,1); }
+
+String getTemperatureDisplay(float value) {
+  if (value < -100.0) return "N/I";
+  return String(value, 1) + " &deg;C";
+}
+
+String getThermalStatus() {
+  if (tempAmbientC < -100.0 && tempInternalC < -100.0) return "Sensores N/I";
+  float maxTemp = tempAmbientC;
+  if (tempInternalC > maxTemp) maxTemp = tempInternalC;
+  if (maxTemp >= 45.0) return "CRITICO";
+  if (maxTemp >= 35.0) return "ALERTA";
+  return "NORMAL";
+}
 
 String getUptimeString() {
   unsigned long seconds = millis() / 1000;
@@ -564,6 +631,15 @@ String htmlPage() {
   html += ".box{background:#111a22;border-radius:12px;padding:15px;margin:15px 0;}";
   html += ".info{font-size:18px;color:#ddd;margin:10px;}";
   html += ".clock{font-size:26px;color:#00d4ff;font-weight:bold;margin:10px;}";
+  html += ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0;}";
+  html += ".kpi{background:#111a22;border-radius:14px;padding:18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);}";
+  html += ".kpiTitle{font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:.7px;}";
+  html += ".kpiValue{font-size:24px;font-weight:bold;color:#00d4ff;margin-top:7px;}";
+  html += ".kpiWide{grid-column:span 2;min-height:90px;display:flex;flex-direction:column;justify-content:center;}";
+  html += ".kpiGreen{color:#00ff66;}";
+  html += ".kpiRed{color:#ff4444;}";
+  html += ".kpiOrange{color:#ffaa00;}";
+  html += ".kpiThermal{color:#00ffcc;}";
   html += "button{font-size:16px;padding:13px 18px;margin:7px;border:none;border-radius:12px;cursor:pointer;font-weight:bold;}";
   html += ".btnOn{background:#00aa44;color:white;}.btnOff{background:#cc2222;color:white;}";
   html += ".btnAuto{background:#ffaa00;color:black;}.btnManual{background:#555;color:white;}";
@@ -576,7 +652,8 @@ String htmlPage() {
   html += "<img class='brand-logo' src='";
   html += SAPA_LOGO;
   html += "' alt='SAPA IoT Logo'>";
-  html += "<h1>SAPA IoT v0.5.3</h1>";
+  html += "<h1>SAPA IoT</h1>";
+  html += "<div style='color:#00d4ff;font-size:14px;font-weight:bold;'>v0.7.0 Sensor Ready</div>";
   html += "<div>Agenda Multi-Janela + Browser Time Sync</div>";
 
   html += "<div id='outputStatus' class='status ";
@@ -585,12 +662,78 @@ String htmlPage() {
 
   html += "<p>Modo: <span id='modeStatus' class='mode'>" + modeText + "</span></p>";
 
-  html += "<div class='box'>";
-  html += "<div id='liveClock' class='clock'>Sincronizando...</div>";
-  html += "<p class='info'>Hora SAPA: <span id='espTime'>" + getTimeString() + "</span></p>";
-  html += "<p class='info'>Uptime: <span id='uptime'>" + getUptimeString() + "</span></p>";
-  html += "<p class='info'>Proximo evento: <span id='nextEvent'>" + nextEvent + "</span></p>";
-  html += "<p class='info'>Rede: SAPA_IOT | IP: 192.168.4.1</p>";
+  html += "<div class='grid'>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Hora do dispositivo</div>";
+  html += "<div id='liveClock' class='kpiValue'>Sincronizando...</div>";
+  html += "</div>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Hora SAPA</div>";
+  html += "<div id='espTime' class='kpiValue'>" + getTimeString() + "</div>";
+  html += "</div>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Uptime</div>";
+  html += "<div id='uptime' class='kpiValue'>" + getUptimeString() + "</div>";
+  html += "</div>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Próximo evento</div>";
+  html += "<div id='nextEvent' class='kpiValue'>" + nextEvent + "</div>";
+  html += "</div>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Rede</div>";
+  html += "<div class='kpiValue'>SAPA_IOT</div>";
+  html += "</div>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>IP</div>";
+  html += "<div class='kpiValue'>192.168.4.1</div>";
+  html += "</div>";
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Ligações</div>";
+  html += "<div id='totalOn' class='kpiValue kpiGreen'>" + String(totalOnEvents) + "</div>";
+  html += "</div>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Desligamentos</div>";
+  html += "<div id='totalOff' class='kpiValue kpiRed'>" + String(totalOffEvents) + "</div>";
+  html += "</div>";
+
+
+  html += "<div class='kpi kpiWide'>";
+  html += "<div class='kpiTitle'>Economia estimada</div>";
+  html += "<div id='energySaved' class='kpiValue kpiGreen'>" + formatFloat1(getEstimatedSavedKwhYear()) + " kWh/ano</div>";
+  html += "</div>";
+
+  html += "<div class='kpi kpiWide'>";
+  html += "<div class='kpiTitle'>Horas evitadas</div>";
+  html += "<div id='hoursSaved' class='kpiValue'>" + formatFloat1(getEstimatedSavedHoursYear()) + " h/ano</div>";
+  html += "</div>";
+
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Temp. ambiente</div>";
+  html += "<div id='tempAmbient' class='kpiValue kpiThermal'>" + getTemperatureDisplay(tempAmbientC) + "</div>";
+  html += "</div>";
+
+  html += "<div class='kpi'>";
+  html += "<div class='kpiTitle'>Temp. interna</div>";
+  html += "<div id='tempInternal' class='kpiValue kpiThermal'>" + getTemperatureDisplay(tempInternalC) + "</div>";
+  html += "</div>";
+
+  html += "<div class='kpi kpiWide'>";
+  html += "<div class='kpiTitle'>Último evento</div>";
+  html += "<div id='lastEvent' class='kpiValue'>" + lastEventDashboard + "</div>";
+  html += "</div>";
+
+  html += "<div class='kpi kpiWide'>";
+  html += "<div class='kpiTitle'>Último comando</div>";
+  html += "<div id='lastSource' class='kpiValue kpiOrange'>" + lastCommandSource + "</div>";
+  html += "</div>";
   html += "</div>";
 
   html += "<a href='/on'><button class='btnOn'>LIGAR</button></a>";
@@ -612,12 +755,12 @@ String htmlPage() {
   html += "function pad(n){return n<10?'0'+n:n;}";
   html += "function updateClock(){var d=new Date();var dias=['Domingo','Segunda','Terca','Quarta','Quinta','Sexta','Sabado'];document.getElementById('liveClock').innerHTML=dias[d.getDay()]+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+' (PC/Celular)';}";
   html += "function syncBrowserTime(){var d=new Date();fetch('/browsertime?wday='+d.getDay()+'&h='+d.getHours()+'&m='+d.getMinutes()+'&s='+d.getSeconds()).then(()=>updateStatus());}";
-  html += "function updateStatus(){fetch('/status').then(r=>r.json()).then(data=>{let s=document.getElementById('outputStatus');s.innerHTML=data.output;s.className='status '+(data.output=='LIGADO'?'on':'off');document.getElementById('modeStatus').innerHTML=data.mode;document.getElementById('espTime').innerHTML=data.time;document.getElementById('uptime').innerHTML=data.uptime;document.getElementById('nextEvent').innerHTML=data.next;});}";
+  html += "function updateStatus(){fetch('/status').then(r=>r.json()).then(data=>{let s=document.getElementById('outputStatus');s.innerHTML=data.output;s.className='status '+(data.output=='LIGADO'?'on':'off');document.getElementById('modeStatus').innerHTML=data.mode;document.getElementById('espTime').innerHTML=data.time;document.getElementById('uptime').innerHTML=data.uptime;document.getElementById('nextEvent').innerHTML=data.next;document.getElementById('totalOn').innerHTML=data.totalOn;document.getElementById('totalOff').innerHTML=data.totalOff;document.getElementById('lastEvent').innerHTML=data.lastEvent;document.getElementById('lastSource').innerHTML=data.lastSource;document.getElementById('energySaved').innerHTML=data.energySaved;document.getElementById('hoursSaved').innerHTML=data.hoursSaved;document.getElementById('tempAmbient').innerHTML=data.tempAmbient;document.getElementById('tempInternal').innerHTML=data.tempInternal;});}";
   html += "setInterval(updateClock,1000);setInterval(updateStatus,1000);updateClock();";
   html += "if(!sessionStorage.getItem('sapa_time_synced')){setTimeout(()=>{syncBrowserTime();sessionStorage.setItem('sapa_time_synced','1');},800);}";
   html += "</script>";
 
-  html += "<div class='watermark'>Developed by Andre Gama de Matos - Software Engineer<br>SAPA IoT v0.5.3</div>";
+  html += "<div class='watermark'>Developed by Andre Gama de Matos - Software Engineer<br>SAPA IoT v0.7.0 Sensor Ready</div>";
 
   html += "</body></html>";
   return html;
@@ -766,8 +909,8 @@ String aboutPage() {
   html += RELEASE_DATE;
   html += "</p>";
   html += "<p><b>Finalidade:</b> controle automatico de liga/desliga de amplificador industrial por agenda multi-janela.</p>";
-  html += "<p><b>Tecnologias:</b><br>ESP32<br>WebServer local<br>Access Point Standalone<br>Agenda Multi-Window<br>Controle SSR/Contactora<br>Log interno circular<br>LittleFS CSV Logging<br>Download de log via Web</p>";
-  html += "<p><b>Hardware:</b><br>SSR/Contactora, botao fisico, LEDs de status e futura expansao com RTC DS3231 e sensores.</p>";
+  html += "<p><b>Tecnologias:</b><br>ESP32<br>WebServer local<br>Access Point Standalone<br>Agenda Multi-Window<br>Controle SSR/Contactora<br>Log interno circular<br>LittleFS CSV Logging<br>Download de log via Web<br>Economia estimada<br>Sensor Ready para monitoramento termico</p>";
+  html += "<p><b>Hardware:</b><br>SSR/Contactora, botao fisico, LEDs de status e futura expansao com RTC DS3231, sensor de temperatura ambiente e sensor de temperatura interna/exaustao.</p>";
   html += "<p><b>Desenvolvido por:</b><br>Andre Gama de Matos - Software Engineer</p>";
   html += "</div><br><a href='/'><button>VOLTAR</button></a></div>";
   html += "<div class='watermark'>Developed by Andre Gama de Matos - Software Engineer<br>SAPA IoT v0.5.3</div>";
@@ -852,7 +995,15 @@ void handleStatus() {
   json += "\"mode\":\"" + String(autoMode ? "AUTO" : "MANUAL") + "\",";
   json += "\"time\":\"" + getTimeString() + "\",";
   json += "\"uptime\":\"" + getUptimeString() + "\",";
-  json += "\"next\":\"" + String(testMode ? getTestNextEvent() : getNextIndustrialEvent()) + "\"";
+  json += "\"next\":\"" + String(testMode ? getTestNextEvent() : getNextIndustrialEvent()) + "\",";
+  json += "\"totalOn\":\"" + String(totalOnEvents) + "\",";
+  json += "\"totalOff\":\"" + String(totalOffEvents) + "\",";
+  json += "\"lastEvent\":\"" + lastEventDashboard + "\",";
+  json += "\"lastSource\":\"" + lastCommandSource + "\",";
+  json += "\"energySaved\":\"" + formatFloat1(getEstimatedSavedKwhYear()) + " kWh/ano\",";
+  json += "\"hoursSaved\":\"" + formatFloat1(getEstimatedSavedHoursYear()) + " h/ano\",";
+  json += "\"tempAmbient\":\"" + getTemperatureDisplay(tempAmbientC) + "\",";
+  json += "\"tempInternal\":\"" + getTemperatureDisplay(tempInternalC) + "\"";
   json += "}";
 
   server.send(200, "application/json", json);
@@ -946,7 +1097,7 @@ void setup() {
     Serial.println("[LittleFS] ERRO ao iniciar sistema de arquivos.");
   }
 
-  addLog("[BOOT] SAPA IoT v0.5.3 - LittleFS CSV Logging");
+  addLog("[BOOT] SAPA IoT v0.6.1 - Dashboard + Estatísticas");
   addLog("[OUTPUT] OFF | Fonte: BOOT_SAFE_OFF");
 
   // ========= MODO STANDALONE AP =========

@@ -2,9 +2,9 @@
 
 ---
 
-## v0.5.3 — Branding Logo + LittleFS CSV Logging
+## v0.7.0 — Sensor Ready
 
-Release: 29/05/2026
+Release: 30/05/2026
 
 ## Added
 
